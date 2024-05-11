@@ -36,35 +36,74 @@ const authenticateJWT = (req, res, next) => {
     });
 };
     
-// Routes
+// Route: GET /home
 app.get('/home', (req, res) => {
-    res.status(200).send(`
-        <html>
-            <head>
-                <title>Home</title>
-                <style>
-                    .container {
-                        width: 80%;
-                        margin: auto;
-                        text-align: center;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>Welcome to the Homepage</h1>
-                    <div>
-                        <p>This webpage is designed to give fellow collectors a quick means of selecting and looking at
-                           the market on eBay or elsewhere for a particular Pokémon product.</p>
-                        <p>Log in or sign up in the top right corner, please.</p>
+    const token = req.cookies['accessToken'];
+
+    if (token) {
+        // Verify the token to get user information
+        jwt.verify(token, jwtSecret, (err, user) => {
+            if (err) {
+                console.log("JWT verify error:", err);
+                res.status(500).send('Internal Server Error');
+            } else {
+                // User is authenticated, render personalized content
+                res.status(200).send(`
+                    <html>
+                        <head>
+                            <title>Home</title>
+                            <style>
+                                .container {
+                                    width: 80%;
+                                    margin: auto;
+                                    text-align: center;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <h1>Welcome to the Homepage, ${user.username}</h1>
+                                <div>
+                                    <p>This webpage is designed to give fellow collectors a quick means of selecting and looking at
+                                    the market on eBay or elsewhere for a particular Pokémon product.</p>
+                                    <p>Logged in as ${user.username}. <a href="/logout">Logout</a></p>
+                                </div>
+                            </div>
+                        </body>
+                    </html>
+                `);
+            }
+        });
+    } else {
+        // User is not authenticated, render default content with login link
+        res.status(200).send(`
+            <html>
+                <head>
+                    <title>Home</title>
+                    <style>
+                        .container {
+                            width: 80%;
+                            margin: auto;
+                            text-align: center;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>Welcome to the Homepage</h1>
+                        <div>
+                            <p>This webpage is designed to give fellow collectors a quick means of selecting and looking at
+                            the market on eBay or elsewhere for a particular Pokémon product.</p>
+                            <p>Log in or sign up in the top right corner, please.</p>
+                            <div style="position: absolute; top: 10px; right: 10px;">
+                                <a href="/account/login-page">Login</a>
+                            </div>
+                        </div>
                     </div>
-                    <div style="position: absolute; top: 10px; right: 10px;">
-                        <a href="/account/login-page">Login</a>
-                    </div>
-                </div>
-            </body>
-        </html>
-    `);
+                </body>
+            </html>
+        `);
+    }
 });
 // In-memory user store (replace this with a database in production)
 const users = [
@@ -85,7 +124,7 @@ app.get('/account/signup-page', (req, res) => {
 
 // Route: POST /account/login
 app.post('/account/login', async (req, res) => {
-    const { username, password, returnUrl } = req.body;
+    const { username, password } = req.body;
 
     // Find user by username
     const user = users.find(u => u.username === username);
@@ -106,9 +145,8 @@ app.post('/account/login', async (req, res) => {
         // Set JWT token in a cookie (HttpOnly and Secure flags set)
         res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, sameSite: 'strict' });
 
-        // Redirect to returnUrl or home page
-        const redirectUrl = returnUrl || '/home'; // Default to '/home' if no returnUrl specified
-        res.redirect(redirectUrl);
+        // Redirect to home page after successful login
+        res.redirect('/home');
     } catch (error) {
         console.error('Error comparing passwords:', error);
         res.status(500).send('Internal Server Error');
@@ -133,7 +171,8 @@ app.post('/account/sign-up', async (req, res) => {
         users.push({ id: users.length + 1, username, password: hashedPassword });
 
         // Send success response
-        res.status(201).send(`User '${username}' registered successfully! Click <a href="/home">here</a> to return to the home page`);
+        res.status(201).send(`User '${username}' registered successfully!`);
+        res.redirect('/account/login-page');
     } catch (error) {
         console.error('Error hashing password:', error);
         res.status(500).send('Internal Server Error');
@@ -149,6 +188,14 @@ app.get('/about', authenticateJWT, (req, res) => {
 app.get('/contact', authenticateJWT, (req, res) => {
     res.send('Welcome to the contact page!');
 });
+
+// Route: GET /logout
+app.get('/logout', (req, res) => {
+    // Clear the accessToken cookie
+    res.clearCookie('accessToken');
+    res.redirect('/home'); // Redirect to home page after logout
+});
+
 
 // Start the server
 app.listen(port, () => {
