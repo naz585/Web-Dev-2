@@ -9,6 +9,9 @@ const port = 3000;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
+app.use(express.static('public'));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 const authenticateJWT = (req, res, next) => {
     console.log("authenticateJWT middleware is running");
@@ -94,7 +97,7 @@ app.post('/account/login', async (req, res) => {
         // Compare hashed password with bcrypt
         const match = await bcrypt.compare(password, user.password);
         if (!match) {
-            return res.status(400).send('Invalid username or password');
+            return res.status(400).send('Invalid username or password! Click <a href="/account/login-page">here</a> to return to the login page');
         }
 
         // Generate JWT token
@@ -119,7 +122,7 @@ app.post('/account/sign-up', async (req, res) => {
     // Check if username already exists
     const existingUser = users.find(u => u.username === username);
     if (existingUser) {
-        return res.status(400).send('Username already exists');
+        return res.status(400).send('Username already exists! Click <a href="/account/signup-page">here</a> to return to the signup page');
     }
 
     try {
@@ -130,7 +133,7 @@ app.post('/account/sign-up', async (req, res) => {
         users.push({ id: users.length + 1, username, password: hashedPassword });
 
         // Send success response
-        res.status(201).send(`User '${username}' registered successfully!`);
+        res.status(201).send(`User '${username}' registered successfully! Click <a href="/home">here</a> to return to the home page`);
     } catch (error) {
         console.error('Error hashing password:', error);
         res.status(500).send('Internal Server Error');
