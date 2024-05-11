@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Information</title>
+</head>
+<body>
+    <h1>Patient Information</h1>
+    {{#if data}}
+        {{#if data.[0]}}
+            <p>PatientID: {{data.[0].PatientID}}</p>
+            <p>Age: {{data.[0].Age}}</p>
+            <p>Gender: {{data.[0].Gender}}</p>
+            <p>BMI: {{data.[0].BMI}}</p>
+            <p>Blood Pressure: {{data.[0].BloodPressure}}</p>
+            <p>Cholesterol: {{data.[0].Cholesterol}}</p>
+            <p>Diabetes: {{data.[0].Diabetes}}</p>
+            <p>Smoker: {{data.[0].Smoker}}</p>
+            <p>Physical Activity: {{data.[0].PhysicalActivity}}</p>
+            <p>Heart Disease: {{data.[0].HeartDisease}}</p>
+        {{else}}
+            <p>No patient data available</p>
+        {{/if}}
+    {{else}}
+        <p>No data available</p>
+    {{/if}}
+</body>
+</html>

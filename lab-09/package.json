@@ -1,0 +1,23 @@
+{
+  "name": "lab-09",
+  "version": "1.0.0",
+  "description": "lab 09",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ari999/Web-Dev-2.git#master"
+  },
+  "author": "Ariful Islam",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ari999/Web-Dev-2/issues"
+  },
+  "homepage": "https://github.com/Ari999/Web-Dev-2/tree/master#readme",
+  "dependencies": {
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

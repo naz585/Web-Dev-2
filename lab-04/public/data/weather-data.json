@@ -1,0 +1,62 @@
+{
+    "Brooklyn": {
+        "2024-02-06": {
+            "Temperature": 25.4,
+            "Humidity": 30,
+            "Weather": "Cloudy",
+            "Wind": {
+                "Speed": 40.7,
+                "Direction": "North"
+            }
+        },
+        "2024-02-05": {
+            "Temperature": 19.2,
+            "Humidity": 60,
+            "Weather": "Rainy",
+            "Wind": {
+                "Speed": 33.2,
+                "Direction": "West"
+            }
+        }
+    },
+    "Manhattan": {
+        "2024-02-06": {
+            "Temperature": 25.9,
+            "Humidity": 88,
+            "Weather": "Cloudy",
+            "Wind": {
+                "Speed": 27.3,
+                "Direction": "North"
+            }
+        },
+        "2024-02-05": {
+            "Temperature": 19.9,
+            "Humidity": 67,
+            "Weather": "Windy",
+            "Wind": {
+                "Speed": 23.8,
+                "Direction": "West"
+            }
+        }
+    },
+    "Queens": {
+        "2024-02-06": {
+            "Temperature": 22.2,
+            "Humidity": 56,
+            "Weather": "Rainy",
+            "Wind": {
+                "Speed": 19.0,
+                "Direction": "North"
+            }
+        },
+        "2024-02-05": {
+            "Temperature": 32.0,
+            "Humidity": 38,
+            "Weather": "Cloudy",
+            "Wind": {
+                "Speed": 23.8,
+                "Direction": "East"
+            }
+        }
+    }
+}

@@ -1,0 +1,18 @@
+.first_page{
+    background:rgb(234, 148, 162);color:red
+}
+.second_page{
+    background:rgb(255, 135, 23);color:green
+}
+.h1{
+    color: navy;
+    border:solid 5px red;width:150px
+  }
+.h2{
+    color: green;
+    border:solid 5px blue;width:180px
+  }
+
+  .Hyper1, .Hyper2{
+    font-size: 20px;
+  }
