@@ -53,6 +53,17 @@ const authenticateJWT = (req, res, next) => {
     });
 };
 
+// Middleware to check if user is authenticated and redirect if logged in
+const redirectToHomeIfLoggedIn = (req, res, next) => {
+    const token = req.cookies['accessToken'];
+    if (token && isAuthenticated(req)) {
+        // User is logged in, redirect to home page
+        res.redirect('/home');
+    } else {
+        // User is not logged in, proceed to render login page
+        next();
+    }
+};
 
 // Routes
 app.get('/home', authenticateJWT, (req, res) => {
@@ -69,7 +80,7 @@ const users = [
 const jwtSecret = 'TestDummy'; // This should be stored securely
 
 // Route to serve login page
-app.get('/account/login-page', (req, res) => {
+app.get('/account/login-page', redirectToHomeIfLoggedIn, (req, res) => {
     res.render('login');
 });
 
