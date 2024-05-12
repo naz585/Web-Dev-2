@@ -76,6 +76,79 @@ const redirectToHomeIfLoggedIn = (req, res, next) => {
     }
 };
 
+// Function to create the users table
+async function createUsersTable() {
+    const checkTableQuery = `
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name = 'users'
+        )
+    `;
+
+    try {
+        const client = await pool.connect();
+        const result = await client.query(checkTableQuery);
+        const tableExists = result.rows[0].exists;
+
+        if (!tableExists) {
+            const createTableQuery = `
+                CREATE TABLE users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL
+                )
+            `;
+            await client.query(createTableQuery);
+            console.log('users table created successfully');
+        } else {
+            console.log('users table already exists, skipping creation');
+        }
+
+        client.release();
+    } catch (error) {
+        console.error('Error creating or checking users table:', error);
+    }
+}
+
+// Function to create the my_games table
+async function createMyGamesTable() {
+    const checkTableQuery = `
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name = 'my_games'
+        )
+    `;
+
+    try {
+        const client = await pool.connect();
+        const result = await client.query(checkTableQuery);
+        const tableExists = result.rows[0].exists;
+
+        if (!tableExists) {
+            const createTableQuery = `
+                CREATE TABLE my_games (
+                    id SERIAL PRIMARY KEY,
+                    url VARCHAR(255) NOT NULL,
+                    TypeofMerch VARCHAR(50) NOT NULL,
+                    description TEXT
+                )
+            `;
+            await client.query(createTableQuery);
+            console.log('my_games table created successfully');
+        } else {
+            console.log('my_games table already exists, skipping creation');
+        }
+
+        client.release();
+    } catch (error) {
+        console.error('Error creating or checking my_games table:', error);
+    }
+}
+
 // GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE 
 // Route to serve home page
 app.get('/home', authenticateJWT, (req, res) => {
@@ -206,9 +279,20 @@ app.post('/store-games', async (req, res) => {
     const { gameIds } = req.body;
 
     try {
-        // Use array of gameIds to insert multiple games into my_games table
-        const insertQuery = 'INSERT INTO my_games (url, TypeofMerch, description) SELECT url, typeofmerch, description FROM pokemon_games WHERE id = ANY($1::int[])';
+        // Check if gameIds is an array
+        if (!Array.isArray(gameIds)) {
+            throw new Error('Invalid gameIds format');
+        }
+
+        // Use gameIds array to insert selected games into my_games table
+        const insertQuery = `
+            INSERT INTO my_games (url, TypeofMerch, description)
+            SELECT url, typeofmerch, description
+            FROM pokemon_games
+            WHERE id = ANY($1)
+        `;
         await pool.query(insertQuery, [gameIds]);
+
         res.sendStatus(200); // Send success response
     } catch (error) {
         console.error('Error storing games:', error);
@@ -216,8 +300,8 @@ app.post('/store-games', async (req, res) => {
     }
 });
 
-
-
+createUsersTable();
+createMyGamesTable();
 // Start the server
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}/welcome`);
