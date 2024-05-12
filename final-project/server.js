@@ -201,6 +201,21 @@ app.post('/account/sign-up', async (req, res) => {
     }
 });
 
+// Route: POST /store-games
+app.post('/store-games', async (req, res) => {
+    const { gameIds } = req.body;
+
+    try {
+        // Use array of gameIds to insert multiple games into my_games table
+        const insertQuery = 'INSERT INTO my_games (url, TypeofMerch, description) SELECT url, typeofmerch, description FROM pokemon_games WHERE id = ANY($1::int[])';
+        await pool.query(insertQuery, [gameIds]);
+        res.sendStatus(200); // Send success response
+    } catch (error) {
+        console.error('Error storing games:', error);
+        res.sendStatus(500); // Send error response
+    }
+});
+
 
 
 // Start the server
