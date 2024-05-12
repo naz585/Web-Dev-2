@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <style>
+        .container {
+            width: 80%;
+            margin: auto;
+            text-align: center;
+        }
+        /* Style the login link */
+        a.login-link {
+            color: white; /* Set the color to white */
+            text-decoration: none;
+        }
+        /* Style the login link on hover */
+        a.login-link:hover {
+            color: yellow; /* Set the hover color to yellow */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Homepage</h1>
+        <div>
+            <p>This webpage is designed to give fellow collectors a quick means of selecting and looking at
+                the market on eBay or elsewhere for a particular Pokémon product.</p>
+            {{#if isLoggedIn}}
+                {{#if username}}
+                    <p>Logged in as {{username}}. <a href="/logout">Logout</a></p>
+                {{else}}
+                    <p>Logged in. <a href="/logout">Logout</a></p>
+                {{/if}}
+            {{else}}
+                <p>Log in or sign up in the top right corner, please.</p>
+                <div style="position: absolute; top: 10px; right: 10px;">
+                    <a href="/account/login-page" class="login-link">Login</a> <!-- Apply the login-link class -->
+                </div>
+            {{/if}}
+        </div>
+    </div>
+</body>
+</html>

@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const path = require('path'); // Import the path module
+const exphbs = require('express-handlebars'); // Import express-handlebars
 const port = 3000;
 
 // Middleware to parse JSON bodies
@@ -13,98 +14,53 @@ app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Configure Handlebars as the view engine
+app.engine('hbs', exphbs.engine({ extname: 'hbs' }));
+app.set('view engine', 'hbs');
+
+// Define the path to the views directory
+app.set('views', path.join(__dirname, 'views'));
+
+// Helper function to check if user is authenticated
+const isAuthenticated = (req) => {
+    const token = req.cookies['accessToken'];
+    if (!token) {
+        return false;
+    }
+    try {
+        const decoded = jwt.verify(token, jwtSecret);
+        return true;
+    } catch (err) {
+        return false;
+    }
+};
+
 const authenticateJWT = (req, res, next) => {
-    console.log("authenticateJWT middleware is running");
     const token = req.cookies['accessToken'];
 
-    if (token == null) {
-        console.log("Token was not supplied");
+    if (!token) {
+        return res.status(401).send('Unauthorized: Access token is missing');
     }
-
 
     jwt.verify(token, jwtSecret, (err, user) => {
-        console.log("Verifying token...");
         if (err) {
-            console.log("Jwt verify had an error:", err);
-            return res.send(`Could not verify JWT`);
+            console.error('JWT verification error:', err);
+            return res.status(401).send('Unauthorized: Invalid access token');
         }
-        req.user = user;
-        console.log("User verified!");
 
-        // If verification succeeds, proceed to the next middleware or route handler
-        next();
+        req.user = user; // Set the verified user object to req.user
+        next(); // Proceed to the next middleware or route handler
     });
 };
-    
-// Route: GET /home
-app.get('/home', (req, res) => {
-    const token = req.cookies['accessToken'];
 
-    if (token) {
-        // Verify the token to get user information
-        jwt.verify(token, jwtSecret, (err, user) => {
-            if (err) {
-                console.log("JWT verify error:", err);
-                res.status(500).send('Internal Server Error');
-            } else {
-                // User is authenticated, render personalized content
-                res.status(200).send(`
-                    <html>
-                        <head>
-                            <title>Home</title>
-                            <style>
-                                .container {
-                                    width: 80%;
-                                    margin: auto;
-                                    text-align: center;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="container">
-                                <h1>Welcome to the Homepage, ${user.username}</h1>
-                                <div>
-                                    <p>This webpage is designed to give fellow collectors a quick means of selecting and looking at
-                                    the market on eBay or elsewhere for a particular Pokémon product.</p>
-                                    <p>Logged in as ${user.username}. <a href="/logout">Logout</a></p>
-                                </div>
-                            </div>
-                        </body>
-                    </html>
-                `);
-            }
-        });
-    } else {
-        // User is not authenticated, render default content with login link
-        res.status(200).send(`
-            <html>
-                <head>
-                    <title>Home</title>
-                    <style>
-                        .container {
-                            width: 80%;
-                            margin: auto;
-                            text-align: center;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <h1>Welcome to the Homepage</h1>
-                        <div>
-                            <p>This webpage is designed to give fellow collectors a quick means of selecting and looking at
-                            the market on eBay or elsewhere for a particular Pokémon product.</p>
-                            <p>Log in or sign up in the top right corner, please.</p>
-                            <div style="position: absolute; top: 10px; right: 10px;">
-                                <a href="/account/login-page">Login</a>
-                            </div>
-                        </div>
-                    </div>
-                </body>
-            </html>
-        `);
-    }
+
+// Routes
+app.get('/home', authenticateJWT, (req, res) => {
+    const isLoggedIn = isAuthenticated(req);
+    const username = isLoggedIn ? req.user.username : null;
+    res.render('home', { isLoggedIn, username });
 });
+
 // In-memory user store (replace this with a database in production)
 const users = [
     
@@ -114,12 +70,12 @@ const jwtSecret = 'TestDummy'; // This should be stored securely
 
 // Route to serve login page
 app.get('/account/login-page', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
+    res.render('login');
 });
 
 // Route to serve sign-up page
 app.get('/account/signup-page', (req, res) => {
-    res.sendFile(path.join(__dirname, 'signup.html'));
+    res.render('signup');
 });
 
 // Route: POST /account/login
@@ -171,8 +127,7 @@ app.post('/account/sign-up', async (req, res) => {
         users.push({ id: users.length + 1, username, password: hashedPassword });
 
         // Send success response
-        res.status(201).send(`User '${username}' registered successfully!`);
-        res.redirect('/account/login-page');
+        res.status(201).redirect('/account/login-page');
     } catch (error) {
         console.error('Error hashing password:', error);
         res.status(500).send('Internal Server Error');
@@ -189,15 +144,19 @@ app.get('/contact', authenticateJWT, (req, res) => {
     res.send('Welcome to the contact page!');
 });
 
+app.get('/welcome', (req, res) => {
+    res.render('home');
+});
+
 // Route: GET /logout
 app.get('/logout', (req, res) => {
     // Clear the accessToken cookie
     res.clearCookie('accessToken');
-    res.redirect('/home'); // Redirect to home page after logout
+    res.redirect('/welcome'); // Redirect to home page after logout
 });
 
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}/home`);
+    console.log(`Server running at http://localhost:${port}/welcome`);
 });
