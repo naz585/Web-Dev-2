@@ -1,0 +1,19 @@
+<h1>Pokemon Games</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Description</th>
+            <th>Type of Merch</th>
+            <th>URL</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each rows}} <!-- Iterate over 'rows' instead of 'games' -->
+            <tr>
+                <td>{{this.description}}</td>
+                <td>{{this.typeofmerch}}</td>
+                <td><a href="{{this.url}}" target="_blank">{{this.url}}</a></td>
+            </tr>
+        {{/each}}
+    </tbody>
+</table>

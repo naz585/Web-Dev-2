@@ -8,6 +8,17 @@ const path = require('path'); // Import the path module
 const exphbs = require('express-handlebars'); // Import express-handlebars
 const port = 3000;
 
+const { Pool } = require('pg');
+
+const pool = new Pool({
+    user: 'postgres',
+    host: 'localhost',
+    database: 'Logging',
+    password: 'postgres',
+    port: 5432,
+});
+
+
 // Middleware to parse JSON bodies
 app.use(express.json());
 app.use(express.static('public'));
@@ -65,11 +76,11 @@ const redirectToHomeIfLoggedIn = (req, res, next) => {
     }
 };
 
-// Routes
+// GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE 
+// Route to serve home page
 app.get('/home', authenticateJWT, (req, res) => {
-    const isLoggedIn = isAuthenticated(req);
-    const username = isLoggedIn ? req.user.username : null;
-    res.render('home', { isLoggedIn, username });
+    const { username } = req.user; // Get username from the decoded token
+    res.render('home', { isLoggedIn: true, username });
 });
 
 // In-memory user store (replace this with a database in production)
@@ -89,62 +100,6 @@ app.get('/account/signup-page', (req, res) => {
     res.render('signup');
 });
 
-// Route: POST /account/login
-app.post('/account/login', async (req, res) => {
-    const { username, password } = req.body;
-
-    // Find user by username
-    const user = users.find(u => u.username === username);
-    if (!user) {
-        return res.status(400).send('Invalid username or password');
-    }
-
-    try {
-        // Compare hashed password with bcrypt
-        const match = await bcrypt.compare(password, user.password);
-        if (!match) {
-            return res.status(400).send('Invalid username or password! Click <a href="/account/login-page">here</a> to return to the login page');
-        }
-
-        // Generate JWT token
-        const accessToken = jwt.sign({ username: user.username, id: user.id }, jwtSecret);
-
-        // Set JWT token in a cookie (HttpOnly and Secure flags set)
-        res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, sameSite: 'strict' });
-
-        // Redirect to home page after successful login
-        res.redirect('/home');
-    } catch (error) {
-        console.error('Error comparing passwords:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
-
-// Route: POST /account/sign-up
-app.post('/account/sign-up', async (req, res) => {
-    const { username, password } = req.body;
-
-    // Check if username already exists
-    const existingUser = users.find(u => u.username === username);
-    if (existingUser) {
-        return res.status(400).send('Username already exists! Click <a href="/account/signup-page">here</a> to return to the signup page');
-    }
-
-    try {
-        // Hash the password using bcrypt
-        const hashedPassword = await bcrypt.hash(password, 10); // Hash password with salt rounds
-
-        // Add new user to the in-memory store with hashed password
-        users.push({ id: users.length + 1, username, password: hashedPassword });
-
-        // Send success response
-        res.status(201).redirect('/account/login-page');
-    } catch (error) {
-        console.error('Error hashing password:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
-
 // Route: GET /about
 app.get('/about', authenticateJWT, (req, res) => {
     res.send('Welcome to the about page!');
@@ -155,9 +110,26 @@ app.get('/contact', authenticateJWT, (req, res) => {
     res.send('Welcome to the contact page!');
 });
 
+// Route: GET /welcome 
 app.get('/welcome', (req, res) => {
     res.render('home');
 });
+
+app.get('/games', authenticateJWT, async (req, res) => {
+    try {
+        const query = 'SELECT id, url, typeofmerch, description FROM pokemon_games';
+        const result = await pool.query(query);
+
+        console.log('Result rows:', result.rows); // Log the retrieved rows to check
+
+        const rows = result.rows;
+        res.render('games', { rows });
+    } catch (err) {
+        console.error('Error fetching data from database:', err);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 
 // Route: GET /logout
 app.get('/logout', (req, res) => {
@@ -165,6 +137,70 @@ app.get('/logout', (req, res) => {
     res.clearCookie('accessToken');
     res.redirect('/welcome'); // Redirect to home page after logout
 });
+
+// POST ROUTES POST ROUTES POST ROUTES POST ROUTES POST ROUTES POST ROUTES POST ROUTES POST ROUTES POST ROUTES POST ROUTES 
+
+// Route: POST /account/login
+app.post('/account/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        // Query the database to find the user by username
+        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        const user = result.rows[0]; // Get the first user (if exists) from the query result
+
+        if (!user) {
+            return res.status(400).send('Invalid username or password');
+        }
+
+        // Compare hashed password with bcrypt
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+            return res.status(400).send('Invalid username or password');
+        }
+
+        // Generate JWT token
+        const accessToken = jwt.sign({ username: user.username, id: user.id }, jwtSecret, { expiresIn: '10m' });
+
+        // Set JWT token in a cookie (HttpOnly and Secure flags set)
+        res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, sameSite: 'strict' });
+
+        // Redirect to home page after successful login
+        res.redirect('/home');
+    } catch (error) {
+        console.error('Error logging in:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+// Route: POST /account/sign-up
+app.post('/account/sign-up', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        // Check if username already exists in the database
+        const userExistsQuery = 'SELECT * FROM users WHERE username = $1';
+        const existingUser = await pool.query(userExistsQuery, [username]);
+
+        if (existingUser.rows.length > 0) {
+            return res.status(400).send('Username already exists! Click <a href="/account/login-page">here</a> to login');
+        }
+
+        // Hash the password using bcrypt
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Insert new user into the database
+        const insertUserQuery = 'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id';
+        const newUser = await pool.query(insertUserQuery, [username, hashedPassword]);
+
+        res.status(201).redirect('/account/login-page');
+    } catch (error) {
+        console.error('Error signing up:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 
 
 // Start the server

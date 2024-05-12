@@ -29,13 +29,14 @@
                 the market on eBay or elsewhere for a particular Pokémon product.</p>
             {{#if isLoggedIn}}
                 {{#if username}}
-                    <p>Logged in as {{username}}. <a href="/logout">Logout</a></p>
+                    <p>Logged in as {{username}}. </p> 
+                    <p>Please check out Games for list of Pokemon games, Merch for consoles and cards, and Saved Games/Merch for your targeted items. <a href="/logout">Logout</a></p>
                 {{else}}
                     <p>Logged in. <a href="/logout">Logout</a></p>
                 {{/if}}
             {{else}}
                 <p>Log in or sign up in the top right corner, please.</p>
-                <div style="position: absolute; top: 10px; right: 10px;">
+                <div style="position: absolute; top: 20px; right: 10px;">
                     <a href="/account/login-page" class="login-link">Login</a> <!-- Apply the login-link class -->
                 </div>
             {{/if}}
