@@ -107,7 +107,7 @@ async function importCSVData(tableName, csvFilePath) {
                         await client.query(insertQuery, values);
                         console.log(`Inserted row for URL: ${row.URL} into table ${tableName}`);
                     } else {
-                        console.log(`Row for URL: ${row.URL} already exists in table ${tableName}, skipping insertion`);
+                        //console.log(`Row for URL: ${row.URL} already exists in table ${tableName}, skipping insertion`);
                     }
                 } catch (error) {
                     console.error(`Error processing row for URL: ${row.URL} in table ${tableName}`, error);
@@ -270,6 +270,43 @@ async function createMyGamesTable() {
     }
 }
 
+// Function to create the my_merch table
+async function createMyMerchTable() {
+    const checkTableQuery = `
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name = 'my_merch'
+        )
+    `;
+
+    try {
+        const client = await pool.connect();
+        const result = await client.query(checkTableQuery);
+        const tableExists = result.rows[0].exists;
+
+        if (!tableExists) {
+            const createTableQuery = `
+                CREATE TABLE my_merch (
+                    id SERIAL PRIMARY KEY,
+                    url VARCHAR(255) NOT NULL,
+                    TypeofMerch VARCHAR(50) NOT NULL,
+                    description TEXT
+                )
+            `;
+            await client.query(createTableQuery);
+            console.log('my_merch table created successfully');
+        } else {
+            console.log('my_merch table already exists, skipping creation');
+        }
+
+        client.release();
+    } catch (error) {
+        console.error('Error creating or checking my_merch table:', error);
+    }
+}
+
 // GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE 
 // Route to serve home page
 app.get('/home', authenticateJWT, (req, res) => {
@@ -332,12 +369,13 @@ app.get('/merch', authenticateJWT, async (req, res) => {
         console.log('Result rows:', result.rows); // Log the retrieved rows to check
 
         const rows = result.rows;
-        res.render('games', { rows });
+        res.render('merch', { rows }); // Render 'merch.handlebars' with data
     } catch (err) {
         console.error('Error fetching data from database:', err);
         res.status(500).send('Internal Server Error');
     }
 });
+
 
 app.get('/saved-games', authenticateJWT, async (req, res) => {
     try {
@@ -348,6 +386,21 @@ app.get('/saved-games', authenticateJWT, async (req, res) => {
 
         const rows = result.rows;
         res.render('games', { rows });
+    } catch (err) {
+        console.error('Error fetching data from database:', err);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/saved-merch', authenticateJWT, async (req, res) => {
+    try {
+        const query = 'SELECT id, url, typeofmerch, description FROM my_merch';
+        const result = await pool.query(query);
+
+        console.log('Result rows:', result.rows); // Log the retrieved rows to check
+
+        const rows = result.rows;
+        res.render('merch', { rows });
     } catch (err) {
         console.error('Error fetching data from database:', err);
         res.status(500).send('Internal Server Error');
@@ -383,7 +436,7 @@ app.post('/account/login', async (req, res) => {
         }
 
         // Generate JWT token
-        const accessToken = jwt.sign({ username: user.username, id: user.id }, jwtSecret, { expiresIn: '10m' });
+        const accessToken = jwt.sign({ username: user.username, id: user.id }, jwtSecret, { expiresIn: '1h' });
 
         // Set JWT token in a cookie (HttpOnly and Secure flags set)
         res.cookie('accessToken', accessToken, { httpOnly: true, secure: false, sameSite: 'strict' });
@@ -449,10 +502,37 @@ app.post('/store-games', async (req, res) => {
         res.sendStatus(500); // Send error response
     }
 });
+
+// Route: POST /store-merch
+app.post('/store-merch', async (req, res) => {
+    const { merchIds } = req.body;
+
+    try {
+        // Check if gameIds is an array
+        if (!Array.isArray(merchIds)) {
+            throw new Error('Invalid merchIds format');
+        }
+
+        // Use gameIds array to insert selected games into my_games table
+        const insertQuery = `
+            INSERT INTO my_merch (url, TypeofMerch, description)
+            SELECT url, typeofmerch, description
+            FROM pokemon_merch
+            WHERE id = ANY($1)
+        `;
+        await pool.query(insertQuery, [merchIds]);
+
+        res.sendStatus(200); // Send success response
+    } catch (error) {
+        console.error('Error storing merch:', error);
+        res.sendStatus(500); // Send error response
+    }
+});
 createPokemonGamesTable();
 createPokemonMerchTable();
 createUsersTable();
 createMyGamesTable();
+createMyMerchTable();
 importCSVData('pokemon_games', './public/data/Pokemon_Games.csv');
 importCSVData('pokemon_merch', './public/data/Pokemon_Merch.csv');
 // Start the server

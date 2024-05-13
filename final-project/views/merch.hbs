@@ -1,0 +1,119 @@
+<!-- Include necessary CSS for table styling -->
+<style>
+    /* Basic table styles */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+
+    th, td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    th {
+        background-color: #f2f2f2;
+    }
+
+    /* Styling for checkboxes */
+    .checkbox-cell {
+        width: 50px;
+        text-align: center;
+    }
+
+    /* Container for scrollable content */
+    .scrollable-container {
+        max-height: 60vh; /* Adjust the maximum height as needed */
+        overflow-y: auto;
+        margin-top: 5px; /* Adjust spacing from navbar */
+        margin-bottom: 10px; /* Adjust spacing from footer */
+        margin: 0 auto;
+        width: 60%;
+    }
+
+    /* Style for submit button */
+    #submit-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        border-radius: 50px;
+        display: block;
+        margin: 0 auto;
+    }
+
+    #submit-button:hover {
+        background-color: #0056b3;
+    }
+    
+    h1 {
+        text-align: center;
+    }
+
+</style>
+
+<!-- Render the table with checkboxes -->
+<h1>Pokemon Merch</h1>
+
+<div class="scrollable-container">
+    <table>
+        <thead>
+            <tr>
+                <th></th> <!-- Empty header for checkbox -->
+                <th>Description</th>
+                <th>Type of Merch</th>
+                <th>URL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each rows}}
+                <tr>
+                    <td class="checkbox-cell">
+                        <input type="checkbox" class="game-checkbox" data-id="{{this.id}}">
+                    </td>
+                    <td>{{this.description}}</td>
+                    <td>{{this.typeofmerch}}</td>
+                    <td><a href="{{this.url}}" target="_blank">{{this.url}}</a></td>
+                </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>
+
+<!-- Submit button to trigger storing selected games -->
+<button id="submit-button">Bookmark Merch</button>
+
+<!-- JavaScript to handle checkbox selection and data storage -->
+<script>
+    // Function to handle submitting selected games
+    document.getElementById('submit-button').addEventListener('click', () => {
+        const selectedMerchIds = [];
+        document.querySelectorAll('.game-checkbox:checked').forEach(checkbox => {
+            selectedMerchIds.push(checkbox.getAttribute('data-id'));
+        });
+
+        // Send the list of selected game IDs to the server for insertion
+        fetch('/store-merch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ merchIds: selectedMerchIds })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to store games');
+            }
+            alert('Selected games successfully stored!');
+            location.reload(); // Refresh the page after successful submission
+        })
+        .catch(error => {
+            console.error('Error storing games:', error);
+            alert('Failed to store games. Please try again.');
+        });
+    });
+</script>
