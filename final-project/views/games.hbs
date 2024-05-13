@@ -31,7 +31,6 @@
         margin-bottom: 10px; /* Adjust spacing from footer */
         margin: 0 auto;
         width: 60%;
-        position: relative; /* Position relative for absolute positioning */
     }
 
     /* Style for submit button */
@@ -55,43 +54,12 @@
         text-align: center;
     }
 
-    /* Style for left and right images */
-    .left-image,
-    .right-image {
-        position: absolute;
-        top: 0;
-        height: 100%;
-        width: 30%; /* Adjust width of the images */
-        background-color: #f2f2f2;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .left-image img,
-    .right-image img {
-        max-width: 100%;
-        max-height: 100%;
-    }
-
-    .left-image {
-        left: -30%;
-    }
-
-    .right-image {
-        right: -30%;
-    }
 </style>
 
 <!-- Render the table with checkboxes -->
 <h1>Pokemon Games</h1>
 
 <div class="scrollable-container">
-    <!-- Left image -->
-    <div class="left-image">
-        <img src="left-image-url.jpg" alt="Left Image">
-    </div>
-    
     <table>
         <thead>
             <tr>
@@ -114,11 +82,6 @@
             {{/each}}
         </tbody>
     </table>
-
-    <!-- Right image -->
-    <div class="right-image">
-        <img src="right-image-url.jpg" alt="Right Image">
-    </div>
 </div>
 
 <!-- Submit button to trigger storing selected games -->

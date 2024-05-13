@@ -1,6 +1,8 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
+const fs = require('fs');
+const csv = require('csv-parser');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -17,7 +19,6 @@ const pool = new Pool({
     password: 'postgres',
     port: 5432,
 });
-
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -76,6 +77,53 @@ const redirectToHomeIfLoggedIn = (req, res, next) => {
     }
 };
 
+// Function to import data from CSV into the specified table
+async function importCSVData(tableName, csvFilePath) {
+    console.log(`Importing data into table ${tableName} from file: ${csvFilePath}`);
+
+    const client = await pool.connect();
+
+    try {
+        const filePath = path.resolve(__dirname, csvFilePath);
+
+        // Read CSV file and parse data
+        fs.createReadStream(filePath)
+            .pipe(csv())
+            .on('data', async (row) => {
+                console.log(`Processing row for ${tableName}:`, row);
+
+                try {
+                    // Check if the row already exists in the specified table
+                    const checkQuery = `SELECT COUNT(*) FROM ${tableName} WHERE "url" = $1`;
+                    const { rowCount } = await client.query(checkQuery, [row.URL]);
+
+                    if (rowCount === 0) {
+                        // Row does not exist, insert it into the specified table
+                        const insertQuery = `
+                            INSERT INTO ${tableName} (url, typeofmerch, description)
+                            VALUES ($1, $2, $3)
+                        `;
+                        const values = [row.URL, row.TypeofMerch, row.Description];
+                        await client.query(insertQuery, values);
+                        console.log(`Inserted row for URL: ${row.URL} into table ${tableName}`);
+                    } else {
+                        console.log(`Row for URL: ${row.URL} already exists in table ${tableName}, skipping insertion`);
+                    }
+                } catch (error) {
+                    console.error(`Error processing row for URL: ${row.URL} in table ${tableName}`, error);
+                }
+            })
+            .on('end', () => {
+                console.log(`Import completed for file: ${csvFilePath}`);
+            });
+    } catch (error) {
+        console.error(`Error importing data from ${csvFilePath} into ${tableName} table:`, error);
+    } finally {
+        client.release();
+    }
+}
+
+
 // Function to create the users table
 async function createUsersTable() {
     const checkTableQuery = `
@@ -109,6 +157,79 @@ async function createUsersTable() {
         client.release();
     } catch (error) {
         console.error('Error creating or checking users table:', error);
+    }
+}
+
+// Function to create the pokemon_games table
+async function createPokemonGamesTable() {
+    const checkTableQuery = `
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name = 'pokemon_games'
+        )
+    `;
+
+    try {
+        const client = await pool.connect();
+        const result = await client.query(checkTableQuery);
+        const tableExists = result.rows[0].exists;
+
+        if (!tableExists) {
+            const createTableQuery = `
+                CREATE TABLE pokemon_games (
+                    id SERIAL PRIMARY KEY,
+                    url VARCHAR(255) NOT NULL,
+                    TypeofMerch VARCHAR(50) NOT NULL,
+                    description TEXT
+                )
+            `;
+            await client.query(createTableQuery);
+            console.log('pokemon_games table created successfully');
+        } else {
+            console.log('pokemon_games table already exists, skipping creation');
+        }
+
+        client.release();
+    } catch (error) {
+        console.error('Error creating or checking pokemon_games table:', error);
+    }
+}
+// Function to create the pokemon_merch table
+async function createPokemonMerchTable() {
+    const checkTableQuery = `
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name = 'pokemon_merch'
+        )
+    `;
+
+    try {
+        const client = await pool.connect();
+        const result = await client.query(checkTableQuery);
+        const tableExists = result.rows[0].exists;
+
+        if (!tableExists) {
+            const createTableQuery = `
+                CREATE TABLE pokemon_merch (
+                    id SERIAL PRIMARY KEY,
+                    url VARCHAR(255) NOT NULL,
+                    TypeofMerch VARCHAR(50) NOT NULL,
+                    description TEXT
+                )
+            `;
+            await client.query(createTableQuery);
+            console.log('pokemon_merch table created successfully');
+        } else {
+            console.log('pokemon_merch table already exists, skipping creation');
+        }
+
+        client.release();
+    } catch (error) {
+        console.error('Error creating or checking pokemon_merch table:', error);
     }
 }
 
@@ -203,6 +324,35 @@ app.get('/games', authenticateJWT, async (req, res) => {
     }
 });
 
+app.get('/merch', authenticateJWT, async (req, res) => {
+    try {
+        const query = 'SELECT id, url, typeofmerch, description FROM pokemon_merch';
+        const result = await pool.query(query);
+
+        console.log('Result rows:', result.rows); // Log the retrieved rows to check
+
+        const rows = result.rows;
+        res.render('games', { rows });
+    } catch (err) {
+        console.error('Error fetching data from database:', err);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/saved-games', authenticateJWT, async (req, res) => {
+    try {
+        const query = 'SELECT id, url, typeofmerch, description FROM my_games';
+        const result = await pool.query(query);
+
+        console.log('Result rows:', result.rows); // Log the retrieved rows to check
+
+        const rows = result.rows;
+        res.render('games', { rows });
+    } catch (err) {
+        console.error('Error fetching data from database:', err);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 // Route: GET /logout
 app.get('/logout', (req, res) => {
@@ -299,9 +449,12 @@ app.post('/store-games', async (req, res) => {
         res.sendStatus(500); // Send error response
     }
 });
-
+createPokemonGamesTable();
+createPokemonMerchTable();
 createUsersTable();
 createMyGamesTable();
+importCSVData('pokemon_games', './public/data/Pokemon_Games.csv');
+importCSVData('pokemon_merch', './public/data/Pokemon_Merch.csv');
 // Start the server
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}/welcome`);
