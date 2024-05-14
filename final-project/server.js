@@ -310,8 +310,11 @@ async function createMyMerchTable() {
 // GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE 
 // Route to serve home page
 app.get('/home', authenticateJWT, (req, res) => {
-    const { username } = req.user; // Get username from the decoded token
-    res.render('home', { isLoggedIn: true, username });
+    // Extract username from the decoded JWT payload (if authenticated)
+    const username = req.user.username; // Assuming `req.user` contains user details after authentication
+
+    // Pass `isLoggedIn` as `true` only if `username` is available (user is authenticated)
+    res.render('home', { isLoggedIn: !!username, username });
 });
 
 // In-memory user store (replace this with a database in production)
@@ -342,7 +345,7 @@ app.get('/contact', authenticateJWT, (req, res) => {
 });
 
 // Route: GET /welcome 
-app.get('/welcome', (req, res) => {
+app.get('/welcome', redirectToHomeIfLoggedIn, (req, res) => {
     res.render('home');
 });
 
@@ -533,8 +536,8 @@ createPokemonMerchTable();
 createUsersTable();
 createMyGamesTable();
 createMyMerchTable();
-importCSVData('pokemon_games', './public/data/Pokemon_Games.csv');
-importCSVData('pokemon_merch', './public/data/Pokemon_Merch.csv');
+//importCSVData('pokemon_games', './public/data/Pokemon_Games.csv');
+//importCSVData('pokemon_merch', './public/data/Pokemon_Merch.csv');
 // Start the server
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}/welcome`);

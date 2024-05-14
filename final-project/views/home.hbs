@@ -19,6 +19,19 @@
         a.login-link:hover {
             color: yellow; /* Set the hover color to yellow */
         }
+        /* Define styles for the logout link */
+        .logout-link {
+            font-size: 16px;
+            color: white;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+/* Define hover effect for the logout link */
+.logout-link:hover {
+    color: rgb(250, 46, 0); /* Change color to red on hover */
+}
+
     </style>
 </head>
 <body>
@@ -28,16 +41,19 @@
             <p>This webpage is designed to give fellow collectors a quick means of selecting and looking at
                 the market on eBay or elsewhere for a particular Pokémon product.</p>
             {{#if isLoggedIn}}
-                {{#if username}}
-                    <p>Logged in as {{username}}. </p> 
-                    <p>Please check out Games for list of Pokemon games, Merch for consoles and cards, and Saved Games/Merch for your targeted items. <a href="/logout">Logout</a></p>
-                {{else}}
-                    <p>Logged in. <a href="/logout">Logout</a></p>
-                {{/if}}
+                <p>Logged in as {{username}}.</p> 
+                <p>Please check out Games for a list of Pokémon games, Merch for consoles and cards, and Saved Games/Merch for your targeted items.</p>
+                <div style="position: absolute; top: 20px; right: 10px;">
+                <!-- Apply custom styles to the username display -->
+                <span style="font-size: 18px; color: rgb(30, 75, 255);">{{username}}</span>
+                <!-- Logout link with class for styling -->
+                <a href="/logout" class="logout-link">Logout</a>
+                </div>
+
             {{else}}
                 <p>Log in or sign up in the top right corner, please.</p>
                 <div style="position: absolute; top: 20px; right: 10px;">
-                    <a href="/account/login-page" class="login-link">Login</a> <!-- Apply the login-link class -->
+                    <a href="/account/login-page" class="login-link">Login</a> <!-- Display login link if not logged in -->
                 </div>
             {{/if}}
         </div>

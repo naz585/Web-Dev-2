@@ -53,7 +53,18 @@
     h1 {
         text-align: center;
     }
+/* Logout link styles */
+    a.logout-link {
+        font-size: 16px;
+        color: white; /* Set the color to white */
+        font-weight: bold;
+        text-decoration: none;
+    }
 
+    /* Logout link hover styles */
+    a.logout-link:hover {
+        color: rgb(250, 46, 0);
+    }
 </style>
 
 <!-- Render the table with checkboxes -->
@@ -82,9 +93,14 @@
             {{/each}}
         </tbody>
     </table>
+    <body>
+        <div style="position: absolute; top: 20px; right: 10px;">
+        <span style="font-size: 18px; color: rgb(30, 75, 255);">{{username}}</span>
+        <a href="/logout" class="logout-link">Logout</a>
+    </div>
+    </body>
 </div>
 
-<!-- Submit button to trigger storing selected games -->
 <button id="submit-button">Bookmark Games</button>
 
 <!-- JavaScript to handle checkbox selection and data storage -->
