@@ -68,7 +68,7 @@
 </style>
 
 <!-- Render the table with checkboxes -->
-<h1>Pokemon Merch</h1>
+<h1>Pokemon Merchandise</h1>
 
 <div class="scrollable-container">
     <table>
@@ -76,7 +76,7 @@
             <tr>
                 <th></th> <!-- Empty header for checkbox -->
                 <th>Description</th>
-                <th>Type of Merch</th>
+                <th>Type</th>
                 <th>URL</th>
             </tr>
         </thead>
@@ -84,10 +84,10 @@
             {{#each rows}}
                 <tr>
                     <td class="checkbox-cell">
-                        <input type="checkbox" class="game-checkbox" data-id="{{this.id}}">
+                        <input type="checkbox" class="merch-checkbox" data-id="{{this.id}}">
                     </td>
                     <td>{{this.description}}</td>
-                    <td>{{this.typeofmerch}}</td>
+                    <td>{{this.type}}</td>
                     <td><a href="{{this.url}}" target="_blank">{{this.url}}</a></td>
                 </tr>
             {{/each}}
@@ -95,41 +95,76 @@
     </table>
     <body>
         <div style="position: absolute; top: 20px; right: 10px;">
-        <a href="/logout" class="logout-link">Logout</a>
-    </div>
+            <a href="/logout" class="logout-link">Logout</a>
+        </div>
     </body>
 </div>
 
-<!-- Submit button to trigger storing selected games -->
-<button id="submit-button">Bookmark Merch</button>
+<button id="submit-button">Bookmark Merchandise</button>
 
 <!-- JavaScript to handle checkbox selection and data storage -->
 <script>
-    // Function to handle submitting selected games
-    document.getElementById('submit-button').addEventListener('click', () => {
+    // Function to set the text of the submit button based on the current route
+    document.addEventListener('DOMContentLoaded', () => {
+        const currentPath = window.location.pathname;
+        const submitButton = document.getElementById('submit-button');
+
+        if (currentPath === '/merch') {
+            submitButton.textContent = 'Bookmark Merchandise';
+        } else if (currentPath === '/saved-merch') {
+            submitButton.textContent = 'Remove Merchandise';
+        }
+    });
+
+    // Function to handle submitting selected merchandise based on the current route
+    document.getElementById('submit-button').addEventListener('click', async () => {
         const selectedMerchIds = [];
-        document.querySelectorAll('.game-checkbox:checked').forEach(checkbox => {
+        document.querySelectorAll('.merch-checkbox:checked').forEach(checkbox => {
             selectedMerchIds.push(checkbox.getAttribute('data-id'));
         });
 
-        // Send the list of selected game IDs to the server for insertion
-        fetch('/store-merch', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ merchIds: selectedMerchIds })
-        })
-        .then(response => {
+        const currentPath = window.location.pathname;
+
+        let actionEndpoint;
+        if (currentPath === '/merch') {
+            // Insert selected records into user-specific merchandise table
+            actionEndpoint = '/store-merch';
+        } else if (currentPath === '/saved-merch') {
+            // Remove selected records from user-specific merchandise table
+            actionEndpoint = '/delete-merch';
+        }
+
+        if (!actionEndpoint || selectedMerchIds.length === 0) {
+            alert('Invalid action or no merchandise selected.');
+            return;
+        }
+
+        try {
+            // Send the list of selected merchandise IDs to the server for the specified action
+            const response = await fetch(actionEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ merchIds: selectedMerchIds })
+            });
+
             if (!response.ok) {
-                throw new Error('Failed to store games');
+                throw new Error('Failed to perform action');
             }
-            alert('Selected games successfully stored!');
-            location.reload(); // Refresh the page after successful submission
-        })
-        .catch(error => {
-            console.error('Error storing games:', error);
-            alert('Failed to store games. Please try again.');
-        });
+
+            alert('Action successfully performed!');
+            
+            // Reset checkboxes after successful action
+            document.querySelectorAll('.merch-checkbox:checked').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            // Reload the page after successful submission (optional)
+            location.reload();
+        } catch (error) {
+            console.error('Error performing action:', error);
+            alert('Failed to perform action. Please try again.');
+        }
     });
 </script>

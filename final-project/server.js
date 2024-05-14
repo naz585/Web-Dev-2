@@ -78,7 +78,7 @@ const redirectToHomeIfLoggedIn = (req, res, next) => {
 };
 
 // Function to import data from CSV into the specified table
-async function importCSVData(tableName, csvFilePath) {
+/*async function importCSVData(tableName, csvFilePath) {
     console.log(`Importing data into table ${tableName} from file: ${csvFilePath}`);
 
     const client = await pool.connect();
@@ -122,7 +122,7 @@ async function importCSVData(tableName, csvFilePath) {
         client.release();
     }
 }
-
+*/
 
 // Function to create the users table
 async function createUsersTable() {
@@ -307,6 +307,19 @@ async function createMyMerchTable() {
     }
 }
 
+// Function to create user-specific table if not exists
+async function createTableIfNotExists(tableName) {
+    const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS ${tableName} (
+            id SERIAL PRIMARY KEY,
+            url TEXT,
+            TypeofMerch TEXT,
+            description TEXT
+        )
+    `;
+    await pool.query(createTableQuery);
+}
+
 // GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE 
 // Route: GET /welcome 
 app.get('/welcome', redirectToHomeIfLoggedIn, (req, res) => {
@@ -351,11 +364,10 @@ app.get('/contact', authenticateJWT, (req, res) => {
 
 
 app.get('/games', authenticateJWT, async (req, res) => {
+    const { username } = req.user;
     try {
         const query = 'SELECT id, url, typeofmerch, description FROM pokemon_games';
         const result = await pool.query(query);
-
-        console.log('Result rows:', result.rows); // Log the retrieved rows to check
 
         const rows = result.rows;
         res.render('games', { rows });
@@ -382,32 +394,56 @@ app.get('/merch', authenticateJWT, async (req, res) => {
 
 
 app.get('/saved-games', authenticateJWT, async (req, res) => {
+    const { username } = req.user; // Get the username from the authenticated user
+
     try {
-        const query = 'SELECT id, url, typeofmerch, description FROM my_games';
+        // Construct the user-specific table name
+        const tableName = `user_${username}_games`;
+
+        // Query the user-specific table to retrieve games data
+        const query = `
+            SELECT id, url, typeofmerch, description
+            FROM ${tableName}
+        `;
+        
+        // Execute the query to retrieve data from the user-specific table
         const result = await pool.query(query);
 
-        console.log('Result rows:', result.rows); // Log the retrieved rows to check
-
+        // Extract the rows from the query result
         const rows = result.rows;
+
+        // Render the 'games' view with the retrieved rows
         res.render('games', { rows });
     } catch (err) {
         console.error('Error fetching data from database:', err);
-        res.status(500).send('Internal Server Error');
+        res.status(500).render('errorAlert'); // Render the errorAlert view on error
     }
 });
 
 app.get('/saved-merch', authenticateJWT, async (req, res) => {
+    const { username } = req.user; // Get the username from the authenticated user
+
     try {
-        const query = 'SELECT id, url, typeofmerch, description FROM my_merch';
+        // Construct the user-specific table name
+        const tableName = `user_${username}_merch`;
+
+        // Query the user-specific table to retrieve merch data
+        const query = `
+            SELECT id, url, typeofmerch, description
+            FROM ${tableName}
+        `;
+        
+        // Execute the query to retrieve data from the user-specific table
         const result = await pool.query(query);
 
-        console.log('Result rows:', result.rows); // Log the retrieved rows to check
-
+        // Extract the rows from the query result
         const rows = result.rows;
+
+        // Render the 'games' view with the retrieved rows
         res.render('merch', { rows });
     } catch (err) {
         console.error('Error fetching data from database:', err);
-        res.status(500).send('Internal Server Error');
+        res.status(500).render('errorAlert'); // Render the errorAlert view on error
     }
 });
 
@@ -482,8 +518,9 @@ app.post('/account/sign-up', async (req, res) => {
 });
 
 // Route: POST /store-games
-app.post('/store-games', async (req, res) => {
+app.post('/store-games', authenticateJWT, async (req, res) => {
     const { gameIds } = req.body;
+    const { username } = req.user; // Assuming you have the user information stored in the request (e.g., from JWT)
 
     try {
         // Check if gameIds is an array
@@ -491,30 +528,35 @@ app.post('/store-games', async (req, res) => {
             throw new Error('Invalid gameIds format');
         }
 
-        // Construct the query to insert selected games into my_games table
-        const insertQuery = `
-            INSERT INTO my_games (url, TypeofMerch, description)
-            SELECT p.url, p.typeofmerch, p.description
-            FROM pokemon_games p
-            WHERE p.id = ANY($1)
-            AND NOT EXISTS (
-                SELECT 1
-                FROM my_games m
-                WHERE m.url = p.url
-                -- Add additional conditions here to check for duplicates
-            )
-        `;
-        
-        // Execute the insert query with gameIds as parameter
-        const result = await pool.query(insertQuery, [gameIds]);
+        // Ensure the user-specific table exists (create if not exist)
+        const tableName = `user_${username}_games`;
+        await createTableIfNotExists(tableName);
 
-        // Check the number of rows affected
-        const rowsAffected = result.rowCount;
+        // Iterate through each game ID and insert if not already in the table
+        const rowsInserted = [];
+        for (const gameId of gameIds) {
+            const insertQuery = `
+                INSERT INTO ${tableName} (url, TypeofMerch, description)
+                SELECT p.url, p.typeofmerch, p.description
+                FROM pokemon_games p
+                WHERE p.id = $1
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM ${tableName} m
+                    WHERE m.url = p.url
+                )
+            `;
 
-        if (rowsAffected > 0) {
-            res.sendStatus(200); // Send success response if rows were inserted
+            const result = await pool.query(insertQuery, [gameId]);
+            if (result.rowCount > 0) {
+                rowsInserted.push(gameId);
+            }
+        }
+
+        if (rowsInserted.length > 0) {
+            res.status(200).json({ inserted: rowsInserted }); // Send success response with inserted game IDs
         } else {
-            res.status(400).send('No new games were inserted'); // Send failure response if no rows were inserted (due to duplicates)
+            res.status(400).send('No new games were inserted'); // Send failure response if no new rows were inserted
         }
     } catch (error) {
         console.error('Error storing games:', error);
@@ -530,13 +572,22 @@ app.post('/delete-games', authenticateJWT, async (req, res) => {
         return res.status(400).send('Invalid game IDs provided');
     }
 
-    try {
-        // Construct a SQL query to delete selected games
-        const deleteQuery = `DELETE FROM my_games WHERE id IN (${gameIds.join(',')})`;
-        await pool.query(deleteQuery);
+    const { username } = req.user; // Get the username from the authenticated user
 
-        // Redirect back to /saved-games after deletion
-        res.redirect('/saved-games');
+    try {
+        // Construct the user-specific table name
+        const tableName = `user_${username}_games`;
+
+        // Construct a SQL query to delete selected games from the user-specific table
+        const deleteQuery = `DELETE FROM ${tableName} WHERE id IN (${gameIds.join(',')})`;
+        const result = await pool.query(deleteQuery);
+
+        // Check the result to determine if any records were deleted
+        if (result.rowCount > 0) {
+            res.status(200).json({ deleted: result.rowCount }); // Send success response with number of deleted records
+        } else {
+            res.status(404).send('No matching records found for deletion'); // Send failure response if no records were deleted
+        }
     } catch (error) {
         console.error('Error deleting games:', error);
         res.status(500).send('Internal Server Error');
@@ -544,56 +595,92 @@ app.post('/delete-games', authenticateJWT, async (req, res) => {
 });
 
 // Route: POST /store-merch
-app.post('/store-merch', async (req, res) => {
+app.post('/store-merch', authenticateJWT, async (req, res) => {
+    const { username } = req.user;
     const { merchIds } = req.body;
 
     try {
-        // Check if gameIds is an array
+        // Check if merchIds is an array
         if (!Array.isArray(merchIds)) {
             throw new Error('Invalid merchIds format');
         }
 
-        // Use gameIds array to insert selected games into my_games table
-        const insertQuery = `
-            INSERT INTO my_merch (url, TypeofMerch, description)
-            SELECT url, typeofmerch, description
-            FROM pokemon_merch
-            WHERE id = ANY($1)
-        `;
-        await pool.query(insertQuery, [merchIds]);
+        // Ensure the user-specific table exists (create if not exist)
+        const tableName = `user_${username}_merch`;
+        await createTableIfNotExists(tableName);
 
-        res.sendStatus(200); // Send success response
+        // Iterate through each merch ID and insert if not already in the table
+        const rowsInserted = [];
+        for (const merchId of merchIds) {
+        const insertQuery = `
+        INSERT INTO ${tableName} (url, TypeofMerch, description)
+        SELECT p.url, p.typeofmerch, p.description
+        FROM pokemon_merch p
+        WHERE p.id = $1
+        AND NOT EXISTS (
+            SELECT 1
+            FROM ${tableName} m
+            WHERE m.url = p.url
+        )
+        `;
+
+        const result = await pool.query(insertQuery, [merchId]);
+            if (result.rowCount > 0) {
+                rowsInserted.push(merchId);
+            }
+        }
+
+        if (rowsInserted.length > 0) {
+            res.status(200).json({ inserted: rowsInserted }); // Send success response with inserted game IDs
+        } else {
+            res.status(400).send('No new content were inserted'); // Send failure response if no new rows were inserted
+        }
     } catch (error) {
-        console.error('Error storing merch:', error);
+        console.error('Error storing content:', error);
         res.sendStatus(500); // Send error response
     }
-
+});
     // Route to handle deletion of selected games in /saved-games
-app.post('/delete-merch', authenticateJWT, async (req, res) => {
-    const { merchIds } = req.body;
+    app.post('/delete-merch', authenticateJWT, async (req, res) => {
+        const { merchIds } = req.body;
+    
+        if (!merchIds || !Array.isArray(merchIds)) {
+            return res.status(400).send('Invalid merch IDs provided');
+        }
+    
+        const { username } = req.user; // Get the username from the authenticated user
+    
+        try {
+            // Construct the user-specific merchandise table name
+            const tableName = `user_${username}_merch`;
+    
+            // Construct a SQL query to delete selected merchandise from the user-specific merchandise table
+            const deleteQuery = `
+                DELETE FROM ${tableName}
+                WHERE id IN (${merchIds.join(',')})
+            `;
+            
+            // Execute the delete query
+            const result = await pool.query(deleteQuery);
+    
+            if (result.rowCount > 0) {
+                // Redirect back to /saved-merch after deletion
+                res.redirect('/saved-merch');
+            } else {
+                // If no rows were deleted, send a failure response
+                res.status(400).send('No merchandise deleted');
+            }
+        } catch (error) {
+            console.error('Error deleting merchandise:', error);
+            res.status(500).send('Internal Server Error');
+        }
+    });
 
-    if (!merchIds || !Array.isArray(merchIds)) {
-        return res.status(400).send('Invalid merch IDs provided');
-    }
-
-    try {
-        // Construct a SQL query to delete selected merch
-        const deleteQuery = `DELETE FROM my_merch WHERE id IN (${merchIds.join(',')})`;
-        await pool.query(deleteQuery);
-
-        // Redirect back to /saved-merch after deletion
-        res.redirect('/saved-merch');
-    } catch (error) {
-        console.error('Error deleting games:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
-});
 createPokemonGamesTable();
 createPokemonMerchTable();
 createUsersTable();
-createMyGamesTable();
-createMyMerchTable();
+//createMyGamesTable();
+//createMyMerchTable();
 //importCSVData('pokemon_games', './public/data/Pokemon_Games.csv');
 //importCSVData('pokemon_merch', './public/data/Pokemon_Merch.csv');
 // Start the server
