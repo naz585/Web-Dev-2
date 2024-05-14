@@ -73,7 +73,13 @@
         <h1>Pokecollecting</h1>
         <nav>
             <ul>
-                <li><a href="/home">Home</a></li>
+                <li>
+                    {{#if isLoggedIn}}
+                        <a href="/home">Home</a>
+                    {{else}}
+                        <a href="/welcome">Home</a>
+                    {{/if}}
+                </li>
                 <li><a href="/games">Games</a></li>
                 <li><a href="/merch">Merch</a></li>
             </ul>
@@ -89,7 +95,7 @@
     </div>
 
     <footer>
-        <p>© 2024 My Website</p>
+        <p>© 2024 Pokemon Depo</p>
     </footer>
 </body>
 </html>

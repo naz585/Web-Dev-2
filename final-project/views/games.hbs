@@ -53,7 +53,7 @@
     h1 {
         text-align: center;
     }
-/* Logout link styles */
+    /* Logout link styles */
     a.logout-link {
         font-size: 16px;
         color: white; /* Set the color to white */
@@ -95,7 +95,6 @@
     </table>
     <body>
         <div style="position: absolute; top: 20px; right: 10px;">
-        <span style="font-size: 18px; color: rgb(30, 75, 255);">{{username}}</span>
         <a href="/logout" class="logout-link">Logout</a>
     </div>
     </body>
@@ -105,31 +104,67 @@
 
 <!-- JavaScript to handle checkbox selection and data storage -->
 <script>
-    // Function to handle submitting selected games
-    document.getElementById('submit-button').addEventListener('click', () => {
-        const selectedGameIds = [];
-        document.querySelectorAll('.game-checkbox:checked').forEach(checkbox => {
-            selectedGameIds.push(checkbox.getAttribute('data-id'));
-        });
+// Function to set the text of the submit button based on the current route
+document.addEventListener('DOMContentLoaded', () => {
+    const currentPath = window.location.pathname;
+    const submitButton = document.getElementById('submit-button');
 
-        // Send the list of selected game IDs to the server for insertion
-        fetch('/store-games', {
+    if (currentPath === '/games') {
+        submitButton.textContent = 'Bookmark Games';
+    } else if (currentPath === '/saved-games') {
+        submitButton.textContent = 'Remove Games';
+    }
+});
+
+    // Function to handle submitting selected games based on the current route
+document.getElementById('submit-button').addEventListener('click', async () => {
+    const selectedGameIds = [];
+    document.querySelectorAll('.game-checkbox:checked').forEach(checkbox => {
+        selectedGameIds.push(checkbox.getAttribute('data-id'));
+    });
+
+    const currentPath = window.location.pathname;
+
+    let actionEndpoint;
+    if (currentPath === '/games') {
+        // Insert selected records into my_games
+        actionEndpoint = '/store-games';
+    } else if (currentPath === '/saved-games') {
+        // Remove selected records from my_games
+        actionEndpoint = '/delete-games';
+    }
+
+    if (!actionEndpoint || selectedGameIds.length === 0) {
+        alert('Invalid action or no games selected.');
+        return;
+    }
+
+    try {
+        // Send the list of selected game IDs to the server for the specified action
+        const response = await fetch(actionEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ gameIds: selectedGameIds })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to store games');
-            }
-            alert('Selected games successfully stored!');
-            location.reload(); // Refresh the page after successful submission
-        })
-        .catch(error => {
-            console.error('Error storing games:', error);
-            alert('Failed to store games. Please try again.');
         });
-    });
+
+        if (!response.ok) {
+            throw new Error('Failed to perform action');
+        }
+
+        alert('Action successfully performed!');
+        
+        // Reset checkboxes after successful action
+        document.querySelectorAll('.game-checkbox:checked').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+
+        // Reload the page after successful submission (optional)
+        location.reload();
+    } catch (error) {
+        console.error('Error performing action:', error);
+        alert('Failed to perform action. Please try again.');
+    }
+});
 </script>

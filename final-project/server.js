@@ -51,13 +51,13 @@ const authenticateJWT = (req, res, next) => {
     const token = req.cookies['accessToken'];
 
     if (!token) {
-        return res.status(401).send('Unauthorized: Access token is missing');
+        return res.status(401).redirect('/account/login-page');
     }
 
     jwt.verify(token, jwtSecret, (err, user) => {
         if (err) {
             console.error('JWT verification error:', err);
-            return res.status(401).send('Unauthorized: Invalid access token');
+            return res.status(401).redirect('/account/login-page');
         }
 
         req.user = user; // Set the verified user object to req.user
@@ -308,6 +308,11 @@ async function createMyMerchTable() {
 }
 
 // GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE GET ROUTES HERE 
+// Route: GET /welcome 
+app.get('/welcome', redirectToHomeIfLoggedIn, (req, res) => {
+    res.render('home');
+});
+
 // Route to serve home page
 app.get('/home', authenticateJWT, (req, res) => {
     // Extract username from the decoded JWT payload (if authenticated)
@@ -344,10 +349,6 @@ app.get('/contact', authenticateJWT, (req, res) => {
     res.send('Welcome to the contact page!');
 });
 
-// Route: GET /welcome 
-app.get('/welcome', redirectToHomeIfLoggedIn, (req, res) => {
-    res.render('home');
-});
 
 app.get('/games', authenticateJWT, async (req, res) => {
     try {
@@ -490,19 +491,55 @@ app.post('/store-games', async (req, res) => {
             throw new Error('Invalid gameIds format');
         }
 
-        // Use gameIds array to insert selected games into my_games table
+        // Construct the query to insert selected games into my_games table
         const insertQuery = `
             INSERT INTO my_games (url, TypeofMerch, description)
-            SELECT url, typeofmerch, description
-            FROM pokemon_games
-            WHERE id = ANY($1)
+            SELECT p.url, p.typeofmerch, p.description
+            FROM pokemon_games p
+            WHERE p.id = ANY($1)
+            AND NOT EXISTS (
+                SELECT 1
+                FROM my_games m
+                WHERE m.url = p.url
+                -- Add additional conditions here to check for duplicates
+            )
         `;
-        await pool.query(insertQuery, [gameIds]);
+        
+        // Execute the insert query with gameIds as parameter
+        const result = await pool.query(insertQuery, [gameIds]);
 
-        res.sendStatus(200); // Send success response
+        // Check the number of rows affected
+        const rowsAffected = result.rowCount;
+
+        if (rowsAffected > 0) {
+            res.sendStatus(200); // Send success response if rows were inserted
+        } else {
+            res.status(400).send('No new games were inserted'); // Send failure response if no rows were inserted (due to duplicates)
+        }
     } catch (error) {
         console.error('Error storing games:', error);
         res.sendStatus(500); // Send error response
+    }
+});
+
+// Route to handle deletion of selected games in /saved-games
+app.post('/delete-games', authenticateJWT, async (req, res) => {
+    const { gameIds } = req.body;
+
+    if (!gameIds || !Array.isArray(gameIds)) {
+        return res.status(400).send('Invalid game IDs provided');
+    }
+
+    try {
+        // Construct a SQL query to delete selected games
+        const deleteQuery = `DELETE FROM my_games WHERE id IN (${gameIds.join(',')})`;
+        await pool.query(deleteQuery);
+
+        // Redirect back to /saved-games after deletion
+        res.redirect('/saved-games');
+    } catch (error) {
+        console.error('Error deleting games:', error);
+        res.status(500).send('Internal Server Error');
     }
 });
 
