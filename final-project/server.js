@@ -577,7 +577,7 @@ app.post('/delete-merch', authenticateJWT, async (req, res) => {
     }
 
     try {
-        // Construct a SQL query to delete selected games
+        // Construct a SQL query to delete selected merch
         const deleteQuery = `DELETE FROM my_merch WHERE id IN (${merchIds.join(',')})`;
         await pool.query(deleteQuery);
 
