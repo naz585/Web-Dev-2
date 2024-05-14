@@ -567,6 +567,27 @@ app.post('/store-merch', async (req, res) => {
         console.error('Error storing merch:', error);
         res.sendStatus(500); // Send error response
     }
+
+    // Route to handle deletion of selected games in /saved-games
+app.post('/delete-merch', authenticateJWT, async (req, res) => {
+    const { merchIds } = req.body;
+
+    if (!merchIds || !Array.isArray(merchIds)) {
+        return res.status(400).send('Invalid merch IDs provided');
+    }
+
+    try {
+        // Construct a SQL query to delete selected games
+        const deleteQuery = `DELETE FROM my_merch WHERE id IN (${merchIds.join(',')})`;
+        await pool.query(deleteQuery);
+
+        // Redirect back to /saved-merch after deletion
+        res.redirect('/saved-merch');
+    } catch (error) {
+        console.error('Error deleting games:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 });
 createPokemonGamesTable();
 createPokemonMerchTable();
