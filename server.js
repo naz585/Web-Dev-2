@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const path = require('path'); // Import the path module
 const exphbs = require('express-handlebars'); // Import express-handlebars
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 const { Pool } = require('pg');
 
