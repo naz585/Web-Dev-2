@@ -346,6 +346,10 @@ app.get('/welcome', redirectToHomeIfLoggedIn, (req, res) => {
     res.render('home');
 });
 
+app.get('/', redirectToHomeIfLoggedIn, (req, res) => {
+    res.render('home');
+});
+
 // Route to serve home page
 app.get('/home', authenticateJWT, (req, res) => {
     // Extract username from the decoded JWT payload (if authenticated)
